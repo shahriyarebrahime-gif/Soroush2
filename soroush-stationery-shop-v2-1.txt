@@ -1,0 +1,214 @@
+
+================================================================================
+FILE: soroush-stationery-shop-v2/.gitignore
+================================================================================
+
+node_modules
+.next
+.env
+.env.local
+
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/README.md
+================================================================================
+
+# Soroush Stationery Shop v2
+Next.js + TypeScript + React
+
+### تغییرات این نسخه
+- ورود/ثبت‌نام با ایمیل به‌جای شماره موبایل
+- ساختار OTP ایمیلی
+- فرم کامل ثبت سفارش: نام، موبایل، استان، شهر، آدرس، کدپستی، روش دریافت و توضیحات
+- صفحه Checkout اختصاصی
+- پرداخت آنلاین عمداً غیرفعال
+- شماره حساب فقط نمونه است
+- پنل ادمین با دسترسی مبتنی بر ایمیل در ساختار پروژه
+- طراحی جدیدتر، responsive، glassmorphism، نورپردازی و micro-interaction
+
+### اجرای محلی
+npm install
+npm run dev
+
+### Demo OTP
+123456
+
+### ایمیل‌های مدیر نمونه
+admin@soroush-shop.ir
+manager@soroush-shop.ir
+
+قبل از Production این موارد حتماً باید اضافه شوند:
+1. سرویس ایمیل واقعی برای OTP
+2. دیتابیس
+3. Session/JWT امن سمت سرور
+4. rate limiting و انقضای OTP
+5. اتصال واقعی ثبت سفارش به دیتابیس
+6. درگاه پرداخت معتبر
+7. مدیریت موجودی و ارسال
+
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/admin/page.tsx
+================================================================================
+
+"use client"; import {useEffect,useState} from "react"; import Link from "next/link"; import {LayoutDashboard,Package,ShoppingCart,Users,Settings,LogOut,TrendingUp} from "lucide-react";
+export default function Admin(){const[email,setEmail]=useState("");useEffect(()=>setEmail(localStorage.getItem("soroush_user")||""),[]);function out(){localStorage.removeItem("soroush_user");location.href="/login"}return <div className="admin"><div className="adminTop"><div className="brand">پنل مدیریت سروش<small>مدیریت فروشگاه</small></div><div style={{display:"flex",gap:10,alignItems:"center",fontSize:10}}>{email}<button className="icon" onClick={out}><LogOut size={16}/></button></div></div><div className="adminLayout"><aside className="sidebar"><Link className="side active" href="/admin"><LayoutDashboard size={16}/> داشبورد</Link><div className="side"><Package size={16}/> محصولات</div><div className="side"><ShoppingCart size={16}/> سفارش‌ها</div><div className="side"><Users size={16}/> مشتریان</div><div className="side"><TrendingUp size={16}/> گزارش فروش</div><div className="side"><Settings size={16}/> تنظیمات</div></aside><main className="adminMain"><h1>داشبورد</h1><p style={{color:"#667085",fontSize:12}}>نمای کلی عملکرد فروشگاه سروش.</p><div className="stats"><div className="stat"><small>فروش امروز</small><strong>۲,۸۴۰,۰۰۰</strong><small>تومان</small></div><div className="stat"><small>سفارش جدید</small><strong>۲۴</strong><small>سفارش</small></div><div className="stat"><small>محصول فعال</small><strong>۱۸۶</strong><small>کالا</small></div><div className="stat"><small>مشتری</small><strong>۱,۲۴۸</strong><small>حساب</small></div></div><div className="panel"><h3>آخرین سفارش‌ها</h3><table className="table"><thead><tr><th>شماره</th><th>مشتری</th><th>مبلغ</th><th>وضعیت</th></tr></thead><tbody>{[["#1048","م. احمدی","۶۸۰,۰۰۰","در حال آماده‌سازی"],["#1047","س. رضایی","۱,۲۴۰,۰۰۰","آماده تحویل"],["#1046","ع. کریمی","۳۹۵,۰۰۰","جدید"]].map(r=><tr key={r[0]}>{r.map((x,i)=><td key={i}>{i===3?<span className="status">{x}</span>:x}</td>)}</tr>)}</tbody></table></div><div className="panel"><h3>پرداخت</h3><p style={{fontSize:11,color:"#667085",lineHeight:2}}>درگاه آنلاین هنوز فعال نشده است. شماره حساب نمونه: <b style={{color:"#173b8f"}}>0100-1234-5678-9012</b></p></div></main></div></div>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/api/auth/request-otp/route.ts
+================================================================================
+
+import {NextResponse} from "next/server";
+export async function POST(req:Request){const{email}=await req.json();if(!/^\S+@\S+\.\S+$/.test(email))return NextResponse.json({message:"ایمیل معتبر نیست."},{status:400});return NextResponse.json({message:"کد ورود ارسال شد. سرویس ایمیل در نسخه فعلی دمو است؛ در Production به سرویس ارسال ایمیل متصل شود."});}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/api/auth/verify-otp/route.ts
+================================================================================
+
+import {NextResponse} from "next/server"; import {ADMIN_EMAILS} from "@/lib/store";
+export async function POST(req:Request){const{email,code}=await req.json();if(code!=="123456")return NextResponse.json({ok:false,message:"کد صحیح نیست. در نسخه دمو: 123456"},{status:401});return NextResponse.json({ok:true,admin:ADMIN_EMAILS.includes(String(email).toLowerCase())});}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/api/order/route.ts
+================================================================================
+
+import {NextResponse} from "next/server";
+export async function POST(req:Request){const body=await req.json();return NextResponse.json({ok:true,orderId:"SR-"+Date.now(),data:body});}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/checkout/page.tsx
+================================================================================
+
+"use client"; import {useState} from "react"; import Link from "next/link"; import {ArrowRight,CheckCircle2,MapPin,CreditCard} from "lucide-react"; import {toman} from "@/lib/store";
+export default function Checkout(){const[done,setDone]=useState(false);const[form,setForm]=useState({name:"",phone:"",province:"اصفهان",city:"اصفهان",address:"",postal:"",delivery:"pickup",note:""});const change=(e:any)=>setForm({...form,[e.target.name]:e.target.value});
+function submit(e:any){e.preventDefault();setDone(true)}
+if(done)return <div className="auth"><div className="authCard" style={{textAlign:"center"}}><CheckCircle2 size={52} color="#173b8f"/><h1>سفارش ثبت شد</h1><p>اطلاعات سفارش ثبت شده و برای هماهنگی با شما تماس گرفته می‌شود.</p><Link className="primary" style={{display:"block"}} href="/">بازگشت به فروشگاه</Link></div></div>;
+return <><div className="header"><div className="container nav"><Link className="logo" href="/"><div className="mark">س</div><div className="brand">سروش<small>ثبت سفارش</small></div></Link><Link href="/" style={{fontSize:12,color:"#667085",marginRight:"auto"}}><ArrowRight size={16}/> بازگشت</Link></div></div><main className="container checkout"><div className="checkoutGrid"><form className="box" onSubmit={submit}><h2>اطلاعات دریافت سفارش</h2><p style={{fontSize:11,color:"#667085"}}>لطفاً اطلاعات را دقیق وارد کنید تا فروشگاه بتواند برای تحویل با شما هماهنگ کند.</p><div className="formGrid"><div className="field"><label>نام و نام خانوادگی *</label><input name="name" required value={form.name} onChange={change}/></div><div className="field"><label>شماره موبایل *</label><input name="phone" required pattern="09[0-9]{9}" inputMode="numeric" placeholder="09123456789" value={form.phone} onChange={change}/></div><div className="field"><label>استان *</label><input name="province" required value={form.province} onChange={change}/></div><div className="field"><label>شهر *</label><input name="city" required value={form.city} onChange={change}/></div><div className="field full"><label>آدرس کامل *</label><textarea name="address" required rows={4} placeholder="خیابان، کوچه، پلاک، واحد..." value={form.address} onChange={change}/></div><div className="field"><label>کد پستی *</label><input name="postal" required pattern="[0-9]{10}" inputMode="numeric" value={form.postal} onChange={change}/></div><div className="field"><label>روش دریافت *</label><select name="delivery" value={form.delivery} onChange={change}><option value="pickup">تحویل حضوری از فروشگاه</option><option value="delivery">ارسال با هماهنگی فروشگاه</option></select></div><div className="field full"><label>توضیحات سفارش</label><textarea name="note" rows={3} placeholder="توضیحات اضافی..." value={form.note} onChange={change}/></div></div><button className="primary" type="submit">ثبت سفارش</button></form><aside className="box summary"><h2>خلاصه سفارش</h2><div className="row"><span>دفتر ۱۰۰ برگ کلاسیک × 2</span><b>{toman(178000)}</b></div><div className="row"><span>خودکار آبی یونی × 2</span><b>{toman(90000)}</b></div><div className="row"><span>جمع کالاها</span><b>{toman(268000)}</b></div><div className="row"><span>هزینه ارسال</span><b>پس از هماهنگی</b></div><div className="row total"><span>مبلغ سفارش</span><b>{toman(268000)}</b></div><div className="paymentDisabled"><CreditCard size={18}/><br/><b>پرداخت آنلاین فعلاً فعال نیست</b><br/>درگاه پرداخت در مرحله بعد اضافه می‌شود. شماره حساب نمونه: <span className="account">0100-1234-5678-9012</span></div></aside></div></main></>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/globals.css
+================================================================================
+
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+:root{--ink:#0b1220;--muted:#667085;--blue:#173b8f;--blue2:#2d64d8;--red:#e04b55;--bg:#f4f7fb;--line:#e6ebf3;--shadow:0 22px 70px rgba(16,35,70,.11)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Vazirmatn,Arial,sans-serif}button,input,textarea,select{font:inherit}a{text-decoration:none;color:inherit}.container{width:min(1180px,calc(100% - 30px));margin:auto}
+.top{background:#09101e;color:#cbd6e8;font-size:11px;padding:8px 0}.topin{display:flex;justify-content:space-between}
+.header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.84);backdrop-filter:blur(22px);border-bottom:1px solid rgba(230,235,243,.9)}.nav{min-height:78px;display:flex;align-items:center;gap:18px}.logo{display:flex;align-items:center;gap:10px;min-width:225px}.mark{width:43px;height:43px;border-radius:15px;background:linear-gradient(135deg,#102d71,#2d64d8);color:white;display:grid;place-items:center;font-weight:900;box-shadow:0 12px 28px #2d64d844}.brand{font-weight:900;line-height:1.1}.brand small{display:block;color:#8a94a6;font-size:10px;margin-top:5px;font-weight:600}.search{flex:1;position:relative}.search input{width:100%;border:1px solid var(--line);border-radius:17px;background:#f7f9fc;padding:13px 45px 13px 16px;outline:none;transition:.25s}.search input:focus{background:white;border-color:#9eb4e8;box-shadow:0 0 0 5px #2d64d812}.search span{position:absolute;right:15px;top:12px;color:#8792a5}.actions{display:flex;gap:8px}.icon{width:44px;height:44px;border:1px solid var(--line);background:white;border-radius:14px;display:grid;place-items:center;cursor:pointer;transition:.2s}.icon:hover{transform:translateY(-2px);box-shadow:0 10px 30px #173b8f15}
+.hero{padding:32px 0}.heroGrid{display:grid;grid-template-columns:1.45fr .55fr;gap:17px}.heroMain{min-height:410px;border-radius:34px;position:relative;overflow:hidden;padding:48px;display:flex;align-items:end;color:white;background:radial-gradient(circle at 75% 22%,#6e99ff55,transparent 28%),radial-gradient(circle at 15% 90%,#dbe7ff22,transparent 28%),linear-gradient(135deg,#08101e,#173b8f 62%,#2d64d8);box-shadow:var(--shadow)}.heroMain:before,.heroMain:after{content:"";position:absolute;border:1px solid #ffffff1c;border-radius:50%;pointer-events:none}.heroMain:before{width:500px;height:500px;left:-230px;top:-280px}.heroMain:after{width:320px;height:320px;right:-130px;bottom:-170px}.heroText{position:relative;z-index:2;max-width:650px}.pill{display:inline-flex;gap:7px;align-items:center;background:#ffffff16;border:1px solid #ffffff26;border-radius:999px;padding:8px 13px;font-size:11px}.hero h1{font-size:43px;line-height:1.2;margin:18px 0 12px;letter-spacing:-1px}.hero p{color:#d6e0f2;line-height:2;font-size:14px;max-width:600px}.cta{display:inline-flex;align-items:center;gap:9px;background:white;color:#173b8f;border-radius:14px;padding:13px 18px;font-weight:900;margin-top:8px;transition:.25s}.cta:hover{transform:translateY(-3px);box-shadow:0 16px 35px #00000028}.side{display:grid;gap:17px}.glass{background:#ffffffcc;backdrop-filter:blur(16px);border:1px solid #fff;border-radius:27px;padding:25px;box-shadow:0 15px 50px #173b8f0d}.glass.dark{background:#0b1220;color:white;border-color:#ffffff0d}.glass h3{margin:8px 0}.glass p{font-size:12px;line-height:2;color:var(--muted)}.glass.dark p{color:#b7c3d8}.miniIcon{width:44px;height:44px;border-radius:14px;background:#edf3ff;color:var(--blue);display:grid;place-items:center}.dark .miniIcon{background:#172238;color:#a8c2ff}
+.section{padding:20px 0}.head{display:flex;justify-content:space-between;align-items:end;margin-bottom:15px}.head h2{margin:0;font-size:23px}.head p{margin:5px 0 0;color:var(--muted);font-size:12px}.cats{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}.cat{background:white;border:1px solid var(--line);border-radius:20px;padding:18px 10px;text-align:center;transition:.25s}.cat:hover{transform:translateY(-5px);box-shadow:var(--shadow)}.catIcon{width:48px;height:48px;margin:auto;border-radius:15px;background:#edf3ff;display:grid;place-items:center;font-size:24px}.cat b{display:block;margin-top:9px;font-size:12px}
+.products{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.product{background:white;border:1px solid var(--line);border-radius:24px;overflow:hidden;transition:.25s}.product:hover{transform:translateY(-6px);box-shadow:var(--shadow)}.pic{height:205px;background:linear-gradient(145deg,#edf2fa,#fff);display:grid;place-items:center;position:relative}.emoji{font-size:76px;filter:drop-shadow(0 17px 18px #10234820)}.tag{position:absolute;right:12px;top:12px;background:white;border:1px solid var(--line);border-radius:999px;padding:6px 9px;font-size:10px;color:var(--blue);font-weight:900}.body{padding:15px}.name{font-weight:800;font-size:13px;min-height:42px}.meta{color:#8a94a6;font-size:10px;margin:5px 0}.price{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.price strong{font-size:16px}.price small{display:block;color:#98a2b3;font-size:9px}.add{width:40px;height:40px;border:0;border-radius:13px;background:linear-gradient(135deg,#173b8f,#2d64d8);color:white;display:grid;place-items:center}
+.info{margin:20px 0 30px;background:#0b1220;color:white;border-radius:30px;padding:32px;display:grid;grid-template-columns:1fr 1fr;gap:30px;overflow:hidden;position:relative}.info:after{content:"";position:absolute;width:360px;height:360px;border:1px solid #ffffff12;border-radius:50%;left:-180px;bottom:-250px}.info h2{margin-top:0}.info p{color:#b9c5d8;line-height:2;font-size:12px}.contact{display:flex;gap:11px;margin:11px 0;align-items:flex-start}.contactIcon{width:40px;height:40px;border-radius:12px;background:#172238;display:grid;place-items:center;color:#9bb7ff}.footer{border-top:1px solid var(--line);padding:25px 0;color:#7b8799;font-size:11px}
+.auth{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 15% 20%,#dfe9ff,transparent 34%),radial-gradient(circle at 85% 80%,#e7eefb,transparent 35%),#f4f7fb}.authCard{width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:30px;padding:32px;box-shadow:var(--shadow)}.authCard h1{margin:18px 0 7px}.authCard p{color:var(--muted);font-size:12px;line-height:2}.field{margin:20px 0}.field label{display:block;font-weight:800;font-size:11px;margin-bottom:8px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;outline:none;background:#fbfcfe}.field input:focus,.field textarea:focus,.field select:focus{border-color:#9eb4e8;box-shadow:0 0 0 4px #2d64d812}.primary{width:100%;border:0;border-radius:14px;padding:14px;color:white;font-weight:900;background:linear-gradient(135deg,#173b8f,#2d64d8);cursor:pointer}.notice{font-size:10px;color:#98a2b3;margin-top:12px;line-height:1.8}
+.checkout{padding:35px 0}.checkoutGrid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.box{background:white;border:1px solid var(--line);border-radius:26px;padding:25px;box-shadow:0 10px 40px #173b8f08}.box h2{margin-top:0}.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}.summary{position:sticky;top:100px;height:max-content}.row{display:flex;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid var(--line);font-size:12px}.total{font-size:18px;font-weight:900;padding-top:18px}.paymentDisabled{margin-top:17px;border:1px dashed #b9c4d6;background:#f8fafc;border-radius:17px;padding:16px;font-size:11px;color:#667085;line-height:2}.account{font-weight:900;letter-spacing:1px;color:#173b8f}
+.admin{min-height:100vh;background:#f4f7fb}.adminTop{height:76px;background:white;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 28px}.adminLayout{display:grid;grid-template-columns:245px 1fr;min-height:calc(100vh - 76px)}.sidebar{background:#09101e;padding:22px;color:white}.side{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;color:#b7c3d8;font-size:12px;margin:4px 0}.side.active,.side:hover{background:#172238;color:white}.adminMain{padding:28px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.stat,.panel{background:white;border:1px solid var(--line);border-radius:21px;padding:20px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:27px;margin:8px 0}.panel{margin-top:17px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px;text-align:right;border-bottom:1px solid var(--line);font-size:11px}.status{background:#edf3ff;color:#173b8f;border-radius:999px;padding:6px 9px;font-weight:800}
+@media(max-width:900px){.heroGrid,.checkoutGrid,.info{grid-template-columns:1fr}.cats{grid-template-columns:repeat(3,1fr)}.products{grid-template-columns:repeat(2,1fr)}.nav{flex-wrap:wrap;padding:12px 0}.logo{min-width:auto}.search{order:3;flex-basis:100%}.adminLayout{grid-template-columns:1fr}.sidebar{display:none}.stats{grid-template-columns:repeat(2,1fr)}.summary{position:static}}
+@media(max-width:600px){.container{width:calc(100% - 20px)}.heroMain{padding:28px;min-height:360px}.hero h1{font-size:30px}.cats{grid-template-columns:repeat(2,1fr)}.products{gap:9px}.pic{height:155px}.emoji{font-size:56px}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}.adminMain{padding:15px}.stats{gap:8px}}
+
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/layout.tsx
+================================================================================
+
+import type {Metadata} from "next"; import "./globals.css";
+export const metadata:Metadata={title:"سروش | دفتر فنی و لوازم‌التحریر",description:"فروشگاه آنلاین سروش در اصفهان"};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="fa" dir="rtl"><body>{children}</body></html>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/login/page.tsx
+================================================================================
+
+"use client"; import {useState} from "react"; import Link from "next/link"; import {ArrowRight,ShieldCheck} from "lucide-react";
+export default function Login(){const[email,setEmail]=useState("");const[code,setCode]=useState("");const[sent,setSent]=useState(false);const[msg,setMsg]=useState("");
+async function send(){if(!/^\S+@\S+\.\S+$/.test(email)){setMsg("ایمیل معتبر وارد کنید.");return}const r=await fetch("/api/auth/request-otp",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email})});const d=await r.json();setSent(true);setMsg(d.message)}
+async function verify(){const r=await fetch("/api/auth/verify-otp",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,code})});const d=await r.json();if(d.ok){localStorage.setItem("soroush_user",email);location.href=d.admin?"/admin":"/"}else setMsg(d.message)}
+return <div className="auth"><div className="authCard"><Link href="/" style={{display:"inline-flex",gap:7,alignItems:"center",fontSize:11,color:"#667085"}}><ArrowRight size={16}/> بازگشت</Link><div style={{marginTop:25}}><div className="mark">س</div><h1>ورود به سروش</h1><p>با ایمیل وارد شوید؛ بدون نیاز به حفظ رمز عبور. کد یک‌بارمصرف به ایمیل شما ارسال می‌شود.</p></div>{!sent?<><div className="field"><label>ایمیل</label><input dir="ltr" type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></div><button className="primary" onClick={send}>ارسال کد ورود</button></>:<><div className="field"><label>کد تأیید</label><input dir="ltr" inputMode="numeric" maxLength={6} placeholder="123456" value={code} onChange={e=>setCode(e.target.value)}/></div><button className="primary" onClick={verify}>تأیید و ورود</button></>}{msg&&<div className="notice">{msg}</div>}<div style={{marginTop:20,padding:13,borderRadius:14,background:"#f6f8fb",display:"flex",gap:8,fontSize:10,color:"#667085"}}><ShieldCheck size={17} color="#173b8f"/> حساب مدیر فقط برای ایمیل‌های مجاز سمت سرور قابل دسترسی خواهد بود.</div></div></div>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/app/page.tsx
+================================================================================
+
+import Header from "@/components/Header"; import ProductCard from "@/components/ProductCard"; import {products} from "@/lib/store"; import {MapPin,Phone,Clock,ArrowLeft,Printer} from "lucide-react";
+export default function Home(){return <><Header/><main className="container"><section className="hero"><div className="heroGrid"><div className="heroMain"><div className="heroText"><span className="pill">✦ فروشگاه رسمی سروش · اصفهان</span><h1>برای مدرسه، دانشگاه و دفتر؛ همه‌چیز یکجا.</h1><p>لوازم‌التحریر، ملزومات اداری و خدمات دفتر فنی با تجربه خرید آنلاین سریع، تمیز و مدرن.</p><a className="cta" href="#products">شروع خرید <ArrowLeft size={17}/></a></div></div><div className="side"><div className="glass"><div className="miniIcon"><Printer size={20}/></div><h3>دفتر فنی + فروشگاه</h3><p>چاپ، کپی و ملزومات نوشت‌افزار را یکجا تهیه کنید.</p></div><div className="glass dark"><div className="miniIcon"><MapPin size={20}/></div><h3>نزدیک مدرسه امامت</h3><p>اصفهان، خیابان جابر انصاری، کوچه ابونعیم شمالی، کنار مدرسه امامت.</p></div></div></div></section>
+<section className="section"><div className="head"><div><h2>دسته‌بندی‌های محبوب</h2><p>سریع‌تر به چیزی که لازم داری برس.</p></div></div><div className="cats">{[["📚","دفتر و کتاب"],["✏️","نوشت‌افزار"],["🖨️","چاپ و کپی"],["📄","کاغذ"],["🗂️","لوازم اداری"],["🎒","ملزومات مدرسه"]].map(x=><div className="cat" key={x[1]}><div className="catIcon">{x[0]}</div><b>{x[1]}</b></div>)}</div></section>
+<section className="section" id="products"><div className="head"><div><h2>پیشنهادهای سروش</h2><p>چند انتخاب محبوب برای شروع.</p></div></div><div className="products">{products.map(p=><ProductCard key={p.id} p={p}/>)}</div></section>
+<section className="info"><div><h2>خرید آنلاین، ادامه‌اش با سروش</h2><p>ثبت سفارش آنلاین در این نسخه آماده شده و اطلاعات مشتری هنگام سفارش به‌صورت فرم دریافت می‌شود. درگاه پرداخت فعلاً فعال نیست و بعداً بدون تغییر اساسی در ساختار اضافه می‌شود.</p></div><div><div className="contact"><div className="contactIcon"><Phone size={18}/></div><div><b>تماس</b><div style={{color:"#b9c5d8"}}>09135858370</div></div></div><div className="contact"><div className="contactIcon"><MapPin size={18}/></div><div><b>آدرس</b><div style={{color:"#b9c5d8",fontSize:12}}>اصفهان، خیابان جابر انصاری، کوچه ابونعیم شمالی، کنار مدرسه امامت</div></div></div><div className="contact"><div className="contactIcon"><Clock size={18}/></div><div><b>ساعات کاری</b><div style={{color:"#b9c5d8"}}>برای هماهنگی با فروشگاه تماس بگیرید.</div></div></div></div></section></main><footer className="footer"><div className="container">© 2026 دفتر فنی و لوازم‌التحریر سروش · تمامی حقوق محفوظ است.</div></footer></>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/components/Header.tsx
+================================================================================
+
+import Link from "next/link"; import {Search,ShoppingBag,UserRound} from "lucide-react";
+export default function Header(){return <><div className="top"><div className="container topin"><span>فروشگاه آنلاین سروش · اصفهان</span><span>پشتیبانی 09135858370</span></div></div><header className="header"><div className="container nav"><Link className="logo" href="/"><div className="mark">س</div><div className="brand">دفتر فنی و لوازم‌التحریر سروش<small>جابر انصاری · اصفهان</small></div></Link><div className="search"><span><Search size={18}/></span><input placeholder="جستجوی محصول، برند یا دسته‌بندی..." /></div><div className="actions"><Link className="icon" href="/login"><UserRound size={18}/></Link><Link className="icon" href="/checkout"><ShoppingBag size={18}/></Link></div></div></header></>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/components/ProductCard.tsx
+================================================================================
+
+import {Plus} from "lucide-react"; import {toman} from "@/lib/store";
+export default function ProductCard({p}:{p:any}){return <article className="product"><div className="pic"><span className="emoji">{p.emoji}</span>{p.tag&&<span className="tag">{p.tag}</span>}</div><div className="body"><div className="name">{p.name}</div><div className="meta">{p.category} · فروشگاه سروش</div><div className="price"><div><strong>{toman(p.price)}</strong><small>قیمت نهایی</small></div><button className="add"><Plus size={18}/></button></div></div></article>}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/lib/store.ts
+================================================================================
+
+export const ADMIN_EMAILS=["admin@soroush-shop.ir","manager@soroush-shop.ir"];
+export const products=[
+{id:1,name:"دفتر ۱۰۰ برگ کلاسیک",category:"دفتر",price:89000,emoji:"📓",tag:"پرفروش"},
+{id:2,name:"خودکار آبی یونی",category:"نوشت‌افزار",price:45000,emoji:"🖊️",tag:"محبوب"},
+{id:3,name:"کاغذ A4 هشتاد گرم",category:"کاغذ",price:295000,emoji:"📄",tag:"اقتصادی"},
+{id:4,name:"زونکن اداری A4",category:"اداری",price:165000,emoji:"🗂️",tag:"پیشنهاد"},
+{id:5,name:"مداد مشکی HB",category:"نوشت‌افزار",price:28000,emoji:"✏️",tag:""},
+{id:6,name:"ماژیک وایت‌برد",category:"نوشت‌افزار",price:79000,emoji:"🖍️",tag:""},
+{id:7,name:"پوشه دکمه‌دار",category:"اداری",price:52000,emoji:"📁",tag:""},
+{id:8,name:"پاک‌کن نرم",category:"نوشت‌افزار",price:19000,emoji:"◻️",tag:""}];
+export const toman=(n:number)=>new Intl.NumberFormat("fa-IR").format(n)+" تومان";
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/next-env.d.ts
+================================================================================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/next.config.ts
+================================================================================
+
+import type { NextConfig } from "next"; const nextConfig:NextConfig={reactStrictMode:true}; export default nextConfig;
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/package.json
+================================================================================
+
+{
+  "name":"soroush-stationery-shop",
+  "version":"2.0.0",
+  "private":true,
+  "scripts":{"dev":"next dev","build":"next build","start":"next start","lint":"next lint"},
+  "dependencies":{"lucide-react":"^0.468.0","next":"^15.1.0","react":"^19.0.0","react-dom":"^19.0.0"},
+  "devDependencies":{"@types/node":"^22.10.0","@types/react":"^19.0.2","@types/react-dom":"^19.0.2","typescript":"^5.7.2"}
+}
+
+
+================================================================================
+FILE: soroush-stationery-shop-v2/tsconfig.json
+================================================================================
+
+{"compilerOptions":{"target":"ES2017","lib":["dom","dom.iterable","esnext"],"allowJs":false,"skipLibCheck":true,"strict":true,"noEmit":true,"esModuleInterop":true,"module":"esnext","moduleResolution":"bundler","resolveJsonModule":true,"isolatedModules":true,"jsx":"preserve","incremental":true,"plugins":[{"name":"next"}],"paths":{"@/*":["./*"]}},"include":["next-env.d.ts",".next/types/**/*.ts","**/*.ts","**/*.tsx"],"exclude":["node_modules"]}
